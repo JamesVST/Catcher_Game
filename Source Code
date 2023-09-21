@@ -1,0 +1,183 @@
+import turtle
+import random
+import math
+import time
+
+# Constants
+NUM_OF_APPLES = 5
+APPLE_SPEED = 0.5
+GAME_DURATION = 30
+CATCHER_SPEED = 3
+
+# Apple colors
+APPLE_COLORS = ["red", "green", "blue", "orange", "purple", "pink", "yellow"]
+
+# Initialize the screen
+wn = turtle.Screen()
+wn.bgcolor("lightblue")
+wn.title("Rectangle Catcher")
+wn.setup(width=600, height=600)
+wn.tracer(0)
+
+# Register the shape for the catcher (rectangle)
+wn.register_shape("rectangle", ((-20, -15), (-20, 15), (20, 15), (20, -15)))
+
+# Create the border
+border = turtle.Turtle()
+border.hideturtle()
+border.speed(0)
+border.color("black")
+border.penup()
+border.goto(-300, 300)
+border.pendown()
+
+for _ in range(4):
+    border.forward(600)
+    border.right(90)
+border.penup()
+border.hideturtle()
+
+# Create a class for game objects (sprites)
+class Sprite(turtle.Turtle):
+    def __init__(self, shape, color, start_x, start_y):
+        super().__init__(shape=shape)
+        self.speed(0)
+        self.penup()
+        self.color(color)
+        self.goto(start_x, start_y)
+        self.speed = 1
+
+    @staticmethod
+    def collision(t1, t2):
+        distance = math.sqrt((t1.xcor() - t2.xcor())**2 + (t1.ycor() - t2.ycor())**2)
+        return distance < 30
+
+# Create a class for the player (catcher)
+class Player(Sprite):
+    def __init__(self, shape, color, start_x, start_y, speed):
+        super().__init__(shape, color, start_x, start_y)
+        self.penup()
+        self.setheading(90)
+        self.left_moving = False
+        self.right_moving = False
+        self.goto(start_x, start_y)
+        self.speed = speed
+
+    def move_left(self):
+        self.left_moving = True
+
+    def move_right(self):
+        self.right_moving = True
+
+    def stop_left(self):
+        self.left_moving = False
+
+    def stop_right(self):
+        self.right_moving = False
+
+    def move(self):
+        x = self.xcor()
+
+        if self.left_moving:
+            x -= self.speed
+            self.setx(max(x, -250))  # Check for left border
+
+        if self.right_moving:
+            x += self.speed
+            self.setx(min(x, 250))  # Check for right border
+
+# Create a class for the apples
+class Apple(Sprite):
+    def __init__(self, start_x, start_y):
+        color = random.choice(APPLE_COLORS)
+        super().__init__("circle", color, start_x, start_y)
+        self.penup()
+        self.goto(start_x, start_y)
+        self.speed = APPLE_SPEED
+
+    def move(self):
+        self.setheading(270)
+        self.forward(self.speed)
+        if self.ycor() < -300:
+            self.goto(random.randint(-250, 250), random.randint(350, 1000))
+
+# Create a list of apples
+apples = [Apple(random.randint(-250, 250), random.randint(350, 1000)) for _ in range(NUM_OF_APPLES)]
+
+# Create the player (catcher)
+player = Player("rectangle", "brown", 0, -250, speed=CATCHER_SPEED)
+
+# Initialize the score
+score = 0
+
+# Create a score display
+score_display = turtle.Turtle()
+score_display.speed(0)
+score_display.color("black")
+score_display.penup()
+score_display.hideturtle()
+score_display.goto(0, 260)
+
+# Function to update the score
+def update_score():
+    global score
+    score += 1
+    score_display.clear()
+    score_display.write("Score: {}".format(score), align="center", font=("Courier", 24, "normal"))
+
+# Create a timer display
+timer_display = turtle.Turtle()
+timer_display.speed(0)
+timer_display.color("black")
+timer_display.penup()
+timer_display.hideturtle()
+timer_display.goto(0, 230)
+
+# Function to update the timer
+def update_timer(remaining_time):
+    timer_display.clear()
+    timer_display.write("Time: {:.1f}".format(remaining_time), align="center", font=("Courier", 18, "normal"))
+
+# Function to handle game over
+def game_over():
+    wn.bgcolor("lightblue")
+    score_display.goto(0, 0)
+    score_display.write("Game Over", align="center", font=("Courier", 36, "bold"))
+    score_display.goto(0, -50)
+    score_display.write("Final Score: {}".format(score), align="center", font=("Courier", 24, "normal"))
+
+# Calculate end time
+start_time = time.time()
+end_time = start_time + GAME_DURATION
+
+# Set up key listeners
+wn.listen()
+wn.onkeypress(player.move_left, "Left")
+wn.onkeypress(player.move_right, "Right")
+wn.onkeyrelease(player.stop_left, "Left")
+wn.onkeyrelease(player.stop_right, "Right")
+
+# Main game loop
+while time.time() < end_time:
+    remaining_time = end_time - time.time()
+    update_timer(remaining_time)
+    wn.update()
+
+    for apple in apples:
+        apple.move()
+
+        if (
+            apple.ycor() < -220
+            and apple.ycor() > -250
+            and apple.xcor() > player.xcor() - 30
+            and apple.xcor() < player.xcor() + 30
+        ):
+            update_score()
+            apple.goto(random.randint(-250, 250), random.randint(350, 1000))
+
+    player.move()
+
+# Game over
+game_over()
+
+wn.mainloop()
